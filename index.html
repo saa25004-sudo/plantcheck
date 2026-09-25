@@ -302,6 +302,30 @@
         </div>
     </div>
 
+    <!-- Modal Dialog for Tracking Prevention / COOP Storage Error -->
+    <div id="modal-tracking-error" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100 transform transition-transform">
+            <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fa-solid fa-cookie-bite"></i>
+            </div>
+            <h3 class="text-lg font-bold text-center text-slate-800 mb-2">ブラウザの保護機能による制限</h3>
+            <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+                ブラウザの「トラッキング防止機能（Tracking Prevention）」やサードパーティCookie制限によりログイン通信が制御されました。
+            </p>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 space-y-1.5 mb-5">
+                <p class="font-bold text-slate-800">【ログインできない場合の対処法】</p>
+                <ul class="list-disc list-inside space-y-1 text-slate-600">
+                    <li><strong>Safari (iPhone / Mac):</strong> 設定 → Safari → 「サイト越えトラッキングを防ぐ」を一時OFF</li>
+                    <li><strong>Chrome / Edge:</strong> アドレスバー左側のアイコンから「サードパーティCookie」を許可</li>
+                    <li><strong>Brave:</strong> アドレスバーのShields（ライオンマーク）をOFF</li>
+                </ul>
+            </div>
+            <button id="btn-close-tracking-modal" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-2.5 rounded-xl text-sm transition-all">
+                了解しました
+            </button>
+        </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
@@ -313,7 +337,9 @@
             GoogleAuthProvider, 
             signInWithPopup, 
             signOut, 
-            onAuthStateChanged 
+            onAuthStateChanged,
+            setPersistence,
+            browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
@@ -396,19 +422,39 @@
         // Google Sign In Handler
         async function handleLogin() {
             try {
+                await setPersistence(auth, browserLocalPersistence);
+                googleProvider.setCustomParameters({ prompt: 'select_account' });
                 await signInWithPopup(auth, googleProvider);
                 showToast("ログインしました", "success");
             } catch (error) {
                 console.error("Login Error:", error);
                 if (error.code === 'auth/unauthorized-domain') {
                     showDomainErrorModal(window.location.hostname);
-                } else if (error.code === 'auth/popup-blocked') {
-                    showToast("ポップアップがブロックされました。許可してください", "error");
+                } else if (error.code === 'auth/popup-blocked' || error.message?.includes('popup')) {
+                    showToast("ポップアップがブロックされました。ブラウザの設定で許可してください", "error");
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    showToast("ログインをキャンセルしました", "info");
                 } else {
-                    showToast("ログインに失敗しました: " + error.message, "error");
+                    showTrackingErrorModal();
                 }
             }
         }
+
+        function showTrackingErrorModal() {
+            const modal = document.getElementById('modal-tracking-error');
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            }
+        }
+
+        document.getElementById('btn-close-tracking-modal')?.addEventListener('click', () => {
+            const modal = document.getElementById('modal-tracking-error');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        });
 
         function showDomainErrorModal(hostname) {
             const domainEl = document.getElementById('error-domain-name');
