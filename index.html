@@ -387,43 +387,6 @@
         // Application State
         let currentUser = null;
         let unsubscribeRecords = null;
-
-            onAuthStateChanged,
-            setPersistence,
-            browserLocalPersistence
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            addDoc, 
-            updateDoc, 
-            deleteDoc, 
-            doc, 
-            onSnapshot, 
-            query, 
-            orderBy, 
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Your Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDa5e2P51IbtdaabpZNbLPSuhED0gObri8",
-            authDomain: "plantcheck-ff98d.firebaseapp.com",
-            projectId: "plantcheck-ff98d",
-            storageBucket: "plantcheck-ff98d.firebasestorage.app",
-            messagingSenderId: "922630433248",
-            appId: "1:922630433248:web:0369c5a4462129340de385"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const googleProvider = new GoogleAuthProvider();
-
-        // Application State
-        let currentUser = null;
-        let unsubscribeRecords = null;
         let rawRecords = [];
         let growthChartInstance = null;
         let deleteTargetId = null;
