@@ -247,7 +247,6 @@
 
                     <!-- Records List Container -->
                     <div id="records-container" class="flex-grow overflow-y-auto max-h-[500px] pr-1 custom-scrollbar space-y-3">
-                        <!-- Populated Dynamically -->
                         <div class="text-center py-12 text-slate-400">
                             <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
                             <p class="text-sm">データを読み込み中...</p>
@@ -259,7 +258,7 @@
         </div>
     </main>
 
-    <!-- Modal Dialogs for Delete Confirmation -->
+    <!-- Modal Dialog for Delete Confirmation -->
     <div id="modal-delete" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl border border-slate-100 transform scale-95 transition-transform duration-200">
             <div class="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
@@ -310,7 +309,7 @@
             </div>
             <h3 class="text-lg font-bold text-center text-slate-800 mb-2">ブラウザの保護機能による制限</h3>
             <p class="text-xs text-slate-600 mb-4 leading-relaxed">
-                ブラウザの「トラッキング防止機能（Tracking Prevention）」やサードパーティCookie制限によりログイン通信が制御されました。
+                ブラウザの「トラッキング防止機能」やサードパーティCookie制限によりログイン通信が制御されました。
             </p>
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 space-y-1.5 mb-5">
                 <p class="font-bold text-slate-800">【ログインできない場合の対処法】</p>
@@ -351,12 +350,9 @@
             deleteDoc, 
             doc, 
             onSnapshot, 
-            query, 
-            orderBy, 
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDa5e2P51IbtdaabpZNbLPSuhED0gObri8",
             authDomain: "plantcheck-ff98d.firebaseapp.com",
@@ -366,13 +362,11 @@
             appId: "1:922630433248:web:0369c5a4462129340de385"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const googleProvider = new GoogleAuthProvider();
 
-        // Check for redirect result on load (for Tracking Prevention fallback)
         getRedirectResult(auth).then((result) => {
             if (result && result.user) {
                 showToast("ログインしました", "success");
@@ -384,14 +378,12 @@
             }
         });
 
-        // Application State
         let currentUser = null;
         let unsubscribeRecords = null;
         let rawRecords = [];
         let growthChartInstance = null;
         let deleteTargetId = null;
 
-        // DOM Elements
         const loggedOutView = document.getElementById('logged-out-view');
         const loggedInView = document.getElementById('logged-in-view');
         const userProfile = document.getElementById('user-profile');
@@ -402,7 +394,6 @@
         const btnLoginHero = document.getElementById('btn-login-hero');
         const btnLogout = document.getElementById('btn-logout');
 
-        // Form Elements
         const recordForm = document.getElementById('record-form');
         const formTitle = document.getElementById('form-title');
         const recordIdInput = document.getElementById('record-id');
@@ -415,25 +406,20 @@
         const btnCancelEdit = document.getElementById('btn-cancel-edit');
         const existingPlantsDatalist = document.getElementById('existing-plants');
 
-        // Records & Filter Elements
         const recordsContainer = document.getElementById('records-container');
         const filterPlantSelect = document.getElementById('filter-plant-select');
         const chartPlantFilter = document.getElementById('chart-plant-filter');
 
-        // Stats Elements
         const statPlantCount = document.getElementById('stat-plant-count');
         const statRecordCount = document.getElementById('stat-record-count');
         const statLastDate = document.getElementById('stat-last-date');
 
-        // Modal Elements
         const modalDelete = document.getElementById('modal-delete');
         const btnModalCancel = document.getElementById('btn-modal-cancel');
         const btnModalConfirmDelete = document.getElementById('btn-modal-confirm-delete');
 
-        // Default Date set to Today
         dateInput.value = new Date().toISOString().split('T')[0];
 
-        // Google Sign In Handler
         async function handleLogin() {
             try {
                 await setPersistence(auth, browserLocalPersistence);
@@ -447,7 +433,6 @@
                 } else if (error.code === 'auth/popup-closed-by-user') {
                     showToast("ログインをキャンセルしました", "info");
                 } else {
-                    // Fallback to Redirect method if Popup or Storage access is blocked by browser Tracking Prevention
                     console.log("Tracking Prevention detected, falling back to signInWithRedirect...");
                     try {
                         showToast("画面を切り替えてログインを行います...", "info");
@@ -494,7 +479,6 @@
             }
         });
 
-        // Sign Out Handler
         async function handleLogout() {
             try {
                 await signOut(auth);
@@ -505,11 +489,9 @@
             }
         }
 
-        // Auth Observer
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                // User logged in
                 userAvatar.src = user.photoURL || 'https://placehold.co/100x100/10b981/ffffff?text=User';
                 userName.textContent = user.displayName || 'ユーザー';
                 userEmail.textContent = user.email || '';
@@ -519,16 +501,13 @@
                 loggedOutView.classList.add('hidden');
                 loggedInView.classList.remove('hidden');
 
-                // Subscribe to User's Records
                 subscribeToUserRecords(user.uid);
             } else {
-                // User logged out
                 btnLogin.classList.remove('hidden');
                 userProfile.classList.add('hidden');
                 loggedOutView.classList.remove('hidden');
                 loggedInView.classList.add('hidden');
 
-                // Cleanup subscription
                 if (unsubscribeRecords) {
                     unsubscribeRecords();
                     unsubscribeRecords = null;
@@ -537,12 +516,9 @@
             }
         });
 
-        // Realtime Firestore Listener
         function subscribeToUserRecords(userId) {
-            // Document Path: users/{userId}/records
             const recordsRef = collection(db, 'users', userId, 'records');
             
-            // Unsubscribe existing listener if any
             if (unsubscribeRecords) unsubscribeRecords();
 
             unsubscribeRecords = onSnapshot(recordsRef, (snapshot) => {
@@ -551,7 +527,6 @@
                     ...doc.data()
                 }));
 
-                // In-memory sort by date descending
                 rawRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 updateUI();
@@ -561,7 +536,6 @@
             });
         }
 
-        // Add or Update Record
         recordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) return;
@@ -589,12 +563,10 @@
 
             try {
                 if (id) {
-                    // Update existing
                     const docRef = doc(db, 'users', currentUser.uid, 'records', id);
                     await updateDoc(docRef, recordData);
                     showToast("記録を更新しました", "success");
                 } else {
-                    // Add new
                     recordData.createdAt = serverTimestamp();
                     const recordsRef = collection(db, 'users', currentUser.uid, 'records');
                     await addDoc(recordsRef, recordData);
@@ -607,7 +579,6 @@
             }
         });
 
-        // Update All UI Elements
         function updateUI() {
             populatePlantDropdowns();
             renderStats();
@@ -615,14 +586,11 @@
             renderChart();
         }
 
-        // Populate Datalist and Filter Selects with unique Plant Names
         function populatePlantDropdowns() {
             const plantNames = [...new Set(rawRecords.map(r => r.plantName))].filter(Boolean).sort();
 
-            // Datalist for autocomplete in form
             existingPlantsDatalist.innerHTML = plantNames.map(name => `<option value="${escapeHtml(name)}">`).join('');
 
-            // List Filter Select
             const currentFilter = filterPlantSelect.value;
             filterPlantSelect.innerHTML = `<option value="ALL">全ての作物 (${rawRecords.length})</option>` +
                 plantNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
@@ -632,7 +600,6 @@
                 filterPlantSelect.value = 'ALL';
             }
 
-            // Chart Select Filter
             const currentChartFilter = chartPlantFilter.value;
             if (plantNames.length > 0) {
                 chartPlantFilter.innerHTML = plantNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
@@ -646,21 +613,18 @@
             }
         }
 
-        // Render Summary Stats
         function renderStats() {
             const uniquePlants = new Set(rawRecords.map(r => r.plantName));
             statPlantCount.textContent = uniquePlants.size;
             statRecordCount.textContent = rawRecords.length;
 
             if (rawRecords.length > 0) {
-                // First record in sorted array is the latest date
                 statLastDate.textContent = rawRecords[0].date;
             } else {
                 statLastDate.textContent = '---';
             }
         }
 
-        // Render Records Cards
         function renderRecordList() {
             const selectedPlant = filterPlantSelect.value;
             const filtered = selectedPlant === 'ALL' 
@@ -719,7 +683,6 @@
             `).join('');
         }
 
-        // Chart rendering using Chart.js
         function renderChart() {
             const selectedPlant = chartPlantFilter.value;
             const ctx = document.getElementById('growthChart').getContext('2d');
@@ -729,7 +692,6 @@
                 return;
             }
 
-            // Filter records for selected plant & sort chronologically (oldest to newest)
             const plantRecords = rawRecords
                 .filter(r => r.plantName === selectedPlant)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -750,7 +712,7 @@
                         {
                             label: '草丈 (㎝)',
                             data: heightData,
-                            borderColor: '#059669', // Emerald 600
+                            borderColor: '#059669',
                             backgroundColor: 'rgba(5, 150, 105, 0.1)',
                             yAxisID: 'yHeight',
                             tension: 0.3,
@@ -761,7 +723,7 @@
                         {
                             label: '葉枚数 (枚)',
                             data: leafData,
-                            borderColor: '#0284c7', // Sky 600
+                            borderColor: '#0284c7',
                             backgroundColor: 'rgba(2, 132, 199, 0.1)',
                             yAxisID: 'yLeaf',
                             tension: 0.3,
@@ -808,7 +770,6 @@
             });
         }
 
-        // Global helper for editing record
         window.editRecord = function(id) {
             const target = rawRecords.find(r => r.id === id);
             if (!target) return;
@@ -827,7 +788,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        // Reset Form to Add Mode
         function resetForm() {
             recordIdInput.value = '';
             recordForm.reset();
@@ -839,7 +799,6 @@
 
         btnCancelEdit.addEventListener('click', resetForm);
 
-        // Delete Modal Logic
         window.confirmDeleteRecord = function(id) {
             deleteTargetId = id;
             modalDelete.classList.remove('hidden');
@@ -869,7 +828,6 @@
             }
         });
 
-        // Event Handlers for Auth and Filters
         btnLogin.addEventListener('click', handleLogin);
         btnLoginHero.addEventListener('click', handleLogin);
         btnLogout.addEventListener('click', handleLogout);
@@ -877,7 +835,6 @@
         filterPlantSelect.addEventListener('change', renderRecordList);
         chartPlantFilter.addEventListener('change', renderChart);
 
-        // Toast Notification Function
         function showToast(message, type = "info") {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -909,7 +866,6 @@
             }, 3500);
         }
 
-        // HTML Escape Utility
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
